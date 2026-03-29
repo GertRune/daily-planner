@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Planner</title>
-<link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Daily Planner">
-<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#c84b2f">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -110,8 +108,10 @@ footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spa
 .setup-inp { width: 100%; max-width: 400px; background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); outline: none; }
 .setup-inp:focus { border-color: var(--gold); }
 .setup-btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 14px 32px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%; max-width: 400px; }
+.setup-btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--ink); }
 .setup-steps { font-size: 11px; color: var(--muted); line-height: 2; max-width: 400px; width: 100%; }
 .setup-steps b { color: var(--ink); }
+.sync-code { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--accent); background: var(--paper); border: 1px solid var(--border); padding: 10px 16px; border-radius: 4px; letter-spacing: 0.1em; user-select: all; text-align: center; max-width: 400px; width: 100%; }
 </style>
 </head>
 <body>
@@ -119,15 +119,14 @@ footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spa
 <!-- SETUP SCREEN -->
 <div class="setup-screen" id="setupScreen">
   <div class="setup-title">Daily <span>Planner</span></div>
-  <div class="setup-sub">One-time setup to enable sync across all your devices via Dropbox.</div>
+  <div class="setup-sub">Sync across all your devices. No accounts, no tokens, no expiry.</div>
   <div class="setup-steps">
-    <b>Step 1:</b> Go to dropbox.com/developers/apps<br>
-    <b>Step 2:</b> Create App → Scoped → Full Dropbox<br>
-    <b>Step 3:</b> Generate Access Token<br>
-    <b>Step 4:</b> Paste it below
+    <b>First device?</b> Tap "Create New" to get your sync code.<br>
+    <b>Adding a device?</b> Enter the sync code from your first device.
   </div>
-  <input class="setup-inp" id="tokenInput" placeholder="Paste your Dropbox access token…" />
-  <button class="setup-btn" onclick="saveToken()">Connect Dropbox & Start</button>
+  <input class="setup-inp" id="codeInput" placeholder="Enter your sync code…" />
+  <button class="setup-btn" onclick="connectWithCode()">Connect & Start</button>
+  <button class="setup-btn secondary" onclick="createNew()">Create New Planner</button>
 </div>
 
 <div class="tabs">
@@ -204,20 +203,21 @@ footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spa
 <div class="sync-bar">
   <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Ready</span></div>
   <span id="syncTime"></span>
-  <span onclick="resetToken()" style="cursor:pointer;opacity:0.5;font-size:9px;letter-spacing:0.1em;">↺ RECONNECT</span>
+  <span onclick="showCode()" style="cursor:pointer;opacity:0.5;font-size:9px;letter-spacing:0.1em;">SYNC CODE</span>
 </div>
 
 <script>
-// IndexedDB for persistent storage (Safari won't purge like localStorage)
-const DB_NAME='DailyPlannerDB',DB_VERSION=1,STORE_NAME='keyval';
-function openDB(){return new Promise((r,j)=>{const q=indexedDB.open(DB_NAME,DB_VERSION);q.onupgradeneeded=()=>q.result.createObjectStore(STORE_NAME);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);})}
-async function idbGet(k){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readonly');const q=t.objectStore(STORE_NAME).get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);})}
-async function idbSet(k,v){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readwrite');t.objectStore(STORE_NAME).put(v,k);t.oncomplete=()=>r();t.onerror=()=>j(t.error);})}
-async function idbDelete(k){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readwrite');t.objectStore(STORE_NAME).delete(k);t.oncomplete=()=>r();t.onerror=()=>j(t.error);})}
+// Kill any existing service worker from previous version
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+}
 
-const DROPBOX_FILE = '/daily-planner-data.json';
-let TOKEN = '';
-async function resetToken() { await idbDelete('dbx_token'); try{localStorage.removeItem('dbx_token');}catch(e){} TOKEN=''; document.getElementById('setupScreen').style.display='flex'; }
+// ── SYNC via jsonblob.com — no tokens, no expiry, no accounts ──
+const API = 'https://jsonblob.com/api/jsonBlob';
+let BLOB_ID = localStorage.getItem('planner_blob_id') || '';
 let saveTimer = null;
 
 let state = {
@@ -228,64 +228,77 @@ let state = {
   projects:[0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}))
 };
 
-// SETUP
-async function saveToken() {
-  const t = document.getElementById('tokenInput').value.trim();
-  if (!t) return alert('Please paste your token first.');
-  TOKEN = t;
-  await idbSet('dbx_token', TOKEN);
-  try{localStorage.setItem('dbx_token', TOKEN);}catch(e){}
-  document.getElementById('setupScreen').style.display='none';
+// ── Setup ──
+async function createNew() {
+  setSyncStatus('syncing', 'Creating…');
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(state)
+    });
+    if (res.ok) {
+      const loc = res.headers.get('Location') || '';
+      BLOB_ID = loc.split('/').pop();
+      if (!BLOB_ID) {
+        const url = res.url || '';
+        BLOB_ID = url.split('/').pop();
+      }
+      localStorage.setItem('planner_blob_id', BLOB_ID);
+      document.getElementById('setupScreen').style.display = 'none';
+      // Show the sync code so user can copy it
+      alert('Your sync code: ' + BLOB_ID + '\n\nSave this! Enter it on your other devices to sync.');
+      setSyncStatus('synced', 'Created');
+      init();
+    } else {
+      setSyncStatus('error', 'Failed to create — try again');
+    }
+  } catch(e) {
+    setSyncStatus('error', e.message);
+  }
+}
+
+function connectWithCode() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (!code) return alert('Enter your sync code first.');
+  BLOB_ID = code;
+  localStorage.setItem('planner_blob_id', BLOB_ID);
+  document.getElementById('setupScreen').style.display = 'none';
   init();
 }
 
-async function checkSetup() {
-  // Try IndexedDB first, then localStorage fallback
-  TOKEN = await idbGet('dbx_token') || '';
-  if (!TOKEN) { try{TOKEN=localStorage.getItem('dbx_token')||'';}catch(e){} if(TOKEN) await idbSet('dbx_token',TOKEN); }
-  if (!TOKEN) {
-    document.getElementById('setupScreen').style.display='flex';
+function showCode() {
+  if (BLOB_ID) {
+    prompt('Your sync code (copy it for other devices):', BLOB_ID);
   } else {
-    document.getElementById('setupScreen').style.display='none';
+    alert('No sync code yet — set up first.');
+  }
+}
+
+function checkSetup() {
+  if (!BLOB_ID) {
+    document.getElementById('setupScreen').style.display = 'flex';
+  } else {
+    document.getElementById('setupScreen').style.display = 'none';
     init();
   }
 }
 
-// DROPBOX
+// ── Sync ──
 function setSyncStatus(s, msg) {
   document.getElementById('syncDot').className = 'sync-dot ' + s;
   document.getElementById('syncLabel').textContent = msg;
   if (s === 'synced') {
-    const now = new Date();
-    document.getElementById('syncTime').textContent = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('syncTime').textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   }
 }
 
-async function loadFromDropbox() {
+async function loadFromCloud() {
   setSyncStatus('syncing', 'Loading…');
   try {
-    // First check if file exists via metadata
-    const metaRes = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({path: DROPBOX_FILE})
-    });
-    if (!metaRes.ok) {
-      // File doesn't exist yet — fresh start, no error
-      setSyncStatus('synced', 'Ready — fresh start');
-      renderAll(); initTextareas();
-      return;
-    }
-    // File exists, download it
-    const res = await fetch('https://content.dropboxapi.com/2/files/download', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + TOKEN,
-        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE})
-      }
+    const res = await fetch(API + '/' + BLOB_ID, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
     });
     if (res.ok) {
       const data = await res.json();
@@ -294,44 +307,40 @@ async function loadFromDropbox() {
       state.projects = state.projects || [0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}));
       state.projects.forEach(p => { while(p.steps.length<5) p.steps.push({text:'',done:false}); });
       setSyncStatus('synced', 'Synced');
+    } else if (res.status === 404) {
+      setSyncStatus('error', 'Invalid sync code');
     } else {
-      const txt = await res.text().catch(()=>'');
-      setSyncStatus('error', res.status + ': ' + (txt.slice(0,40)||'Load failed'));
+      setSyncStatus('error', res.status + ' load error');
     }
   } catch(e) {
-    await loadLocal();
-    setSyncStatus('error', 'Offline: ' + e.message);
+    loadLocal();
+    setSyncStatus('error', 'Offline');
   }
   renderAll(); initTextareas();
 }
 
-async function saveToDropbox() {
-  await saveLocal();
+async function saveToCloud() {
+  saveLocal();
   setSyncStatus('syncing', 'Saving…');
   try {
-    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + TOKEN,
-        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE, mode: {".tag": "overwrite"}}),
-        'Content-Type': 'application/octet-stream'
-      },
+    const res = await fetch(API + '/' + BLOB_ID, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(state)
     });
     if (res.ok) {
       setSyncStatus('synced', 'Synced');
     } else {
-      const txt = await res.text().catch(()=>'');
-      setSyncStatus('error', res.status + ': ' + (txt.slice(0,40)||'Save failed'));
+      setSyncStatus('error', res.status + ' save error');
     }
   } catch(e) {
-    setSyncStatus('error', 'Offline: ' + e.message);
+    setSyncStatus('error', 'Offline — saved locally');
   }
 }
 
-function scheduleSave() { saveLocal(); clearTimeout(saveTimer); saveTimer = setTimeout(saveToDropbox, 1500); }
-async function saveLocal() { try{await idbSet('planner_data',JSON.stringify(state));}catch(e){} try{localStorage.setItem('planner_local',JSON.stringify(state));}catch(e){} }
-async function loadLocal() { try{let s=await idbGet('planner_data');if(!s)try{s=localStorage.getItem('planner_local');}catch(e){}if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){} }
+function scheduleSave() { saveLocal(); clearTimeout(saveTimer); saveTimer = setTimeout(saveToCloud, 1500); }
+function saveLocal() { try { localStorage.setItem('planner_local', JSON.stringify(state)); } catch(e){} }
+function loadLocal() { try { const s=localStorage.getItem('planner_local'); if(s){const p=JSON.parse(s);state={...state,...p};} } catch(e){} }
 
 function setDate() {
   const d = new Date();
@@ -449,8 +458,7 @@ function renderList(){
 }
 document.getElementById('listInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){state.list.push({text:e.target.value.trim(),done:false});e.target.value='';scheduleSave();renderList();}});
 
-function init(){setDate();loadFromDropbox();}
-if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
+function init(){setDate();loadFromCloud();}
 checkSetup();
 </script>
 </body>
