@@ -361,7 +361,7 @@ async function saveToDropbox() {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + TOKEN,
-        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE, mode: 'overwrite'}),
+        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE, mode: {".tag": "overwrite"}}),
         'Content-Type': 'application/octet-stream'
       },
       body: JSON.stringify(state)
