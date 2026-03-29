@@ -238,11 +238,10 @@ async function createNew() {
       body: JSON.stringify(state)
     });
     if (res.ok) {
-      const loc = res.headers.get('Location') || '';
-      BLOB_ID = loc.split('/').pop();
+      BLOB_ID = res.headers.get('X-Jsonblob-Id') || '';
       if (!BLOB_ID) {
-        const url = res.url || '';
-        BLOB_ID = url.split('/').pop();
+        const loc = res.headers.get('Location') || '';
+        BLOB_ID = loc.split('/').pop();
       }
       localStorage.setItem('planner_blob_id', BLOB_ID);
       document.getElementById('setupScreen').style.display = 'none';
