@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Daily Planner</title>
+
+<!-- PWA & iOS Web App -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Daily Planner">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#c84b2f">
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f0e8; --paper: #faf7f2; --border: #d4cbb8; --border-light: #e8e0d0;
+  --ink: #1a1a18; --muted: #8a8070; --accent: #c84b2f; --gold: #b89a4e; --blue: #4a7a9b;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+body { background: var(--bg); color: var(--ink); font-family: 'DM Mono', monospace; min-height: 100vh; padding: var(--safe-top) 0 calc(60px + var(--safe-bottom)); -webkit-text-size-adjust: 100%; }
+body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 31px, var(--border-light) 31px, var(--border-light) 32px); opacity: 0.4; pointer-events: none; z-index: 0; }
+.tabs { position: sticky; top: var(--safe-top); z-index: 100; background: var(--bg); border-bottom: 2px solid var(--ink); display: flex; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 1; min-width: 70px; padding: 14px 6px 10px; text-align: center; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; user-select: none; -webkit-tap-highlight-color: transparent; }
+.tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.tab-icon { font-size: 14px; display: block; margin-bottom: 3px; }
+.section-page { display: none; animation: fadeUp 0.3s ease both; position: relative; z-index: 1; }
+.section-page.active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.page-header { padding: 32px 24px 20px; border-bottom: 1px solid var(--border); }
+.date-str { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.page-title { font-family: 'Playfair Display', serif; font-size: clamp(28px, 6vw, 48px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.page-title span { color: var(--accent); }
+.section { padding: 24px 24px 28px; border-bottom: 1px solid var(--border); }
+.section-label { font-size: 9px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.mindset-q { margin-bottom: 20px; }
+.q-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 6px; }
+.q-num { font-family: 'Playfair Display', serif; font-size: 24px; font-style: italic; color: var(--border); line-height: 1.1; min-width: 22px; }
+.q-prompt { font-size: 11px; color: var(--muted); line-height: 1.5; padding-top: 4px; }
+.q-inp { width: 100%; background: var(--paper); border: 1px solid var(--border); border-radius: 3px; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 300; padding: 10px 12px; resize: none; min-height: 56px; outline: none; transition: border-color 0.2s; caret-color: var(--accent); -webkit-appearance: none; }
+.q-inp:focus { border-color: var(--gold); }
+.q-inp::placeholder { color: var(--border); font-style: italic; }
+.projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.project-card { background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 16px; }
+.project-name-inp { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); outline: none; color: var(--ink); font-family: 'Playfair Display', serif; font-size: 15px; font-style: italic; padding-bottom: 6px; margin-bottom: 12px; caret-color: var(--accent); }
+.project-name-inp::placeholder { color: var(--border); }
+.project-steps { display: flex; flex-direction: column; gap: 4px; }
+.step-row { display: grid; grid-template-columns: 18px 1fr 18px; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px dashed var(--border-light); }
+.step-num { font-size: 10px; color: var(--border); }
+.step-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 300; width: 100%; caret-color: var(--accent); }
+.step-inp::placeholder { color: var(--border-light); }
+.step-inp.done-text { text-decoration: line-through; opacity: 0.4; }
+.step-check { width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 2px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.step-check.checked { background: var(--accent); border-color: var(--accent); }
+.step-check.checked::after { content: '✓'; color: white; font-size: 9px; }
+.top3-list { display: flex; flex-direction: column; }
+.top3-item { display: grid; grid-template-columns: 44px 1fr 28px; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.top3-item:first-child { border-top: 1px solid var(--border); }
+.rank-num { font-family: 'Playfair Display', serif; font-size: 32px; font-style: italic; color: var(--border); line-height: 1; transition: color 0.2s; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.top3-item.done .rank-num { color: var(--accent); }
+.t3-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 300; width: 100%; caret-color: var(--accent); }
+.t3-inp::placeholder { color: var(--border); }
+.top3-item.done .t3-inp { text-decoration: line-through; opacity: 0.38; }
+.circle-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.circle-btn svg { opacity: 0; transition: opacity 0.15s; }
+.top3-item.done .circle-btn { background: var(--accent); border-color: var(--accent); }
+.top3-item.done .circle-btn svg { opacity: 1; }
+.prio-item, .w-item, .l-item { display: grid; grid-template-columns: 20px 1fr 20px; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+.prio-item:first-child, .w-item:first-child, .l-item:first-child { border-top: 1px dashed var(--border); }
+.prio-dash, .l-dash { color: var(--muted); font-size: 12px; text-align: center; cursor: pointer; user-select: none; transition: color 0.15s; -webkit-tap-highlight-color: transparent; }
+.prio-item.done .prio-dash, .l-item.done .l-dash { color: var(--accent); }
+.prio-inp, .w-inp, .l-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 300; width: 100%; caret-color: var(--accent); }
+.prio-item.done .prio-inp, .w-item.done .w-inp, .l-item.done .l-inp { text-decoration: line-through; opacity: 0.38; }
+.w-dot { width: 8px; height: 8px; border: 1.5px solid var(--gold); border-radius: 50%; margin: auto; transition: all 0.2s; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.w-item.done .w-dot { background: var(--gold); }
+.add-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.add-plus { color: var(--border); font-size: 16px; width: 20px; text-align: center; }
+.add-inp { background: transparent; border: none; border-bottom: 1px solid transparent; outline: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 300; width: 100%; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; caret-color: var(--accent); }
+.add-inp:focus { border-bottom-color: var(--gold); color: var(--ink); }
+.add-inp::placeholder { color: var(--border); }
+.del-btn { background: none; border: none; color: var(--border); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; transition: color 0.15s; -webkit-tap-highlight-color: transparent; }
+.del-btn:active { color: var(--accent); }
+@media (hover: hover) { .del-btn { opacity: 0; } .w-item:hover .del-btn, .l-item:hover .del-btn, .prio-item:hover .del-btn { opacity: 1; } }
+@media (hover: none) { .del-btn { opacity: 0.4; } }
+.del-btn:hover { color: var(--accent); }
+.prog-wrap { margin-top: 12px; }
+.prog-bar { height: 1px; background: var(--border); }
+.prog-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+.prog-lbl { font-size: 10px; color: var(--muted); margin-top: 5px; }
+.eve-num { color: var(--blue) !important; }
+.quote-block { background: var(--paper); border-left: 3px solid var(--accent); padding: 14px 16px; border-radius: 0 4px 4px 0; }
+.quote-text { font-family: 'Playfair Display', serif; font-size: 12px; font-style: italic; color: var(--muted); line-height: 1.7; }
+.quote-attr { font-size: 10px; color: var(--border); letter-spacing: 0.1em; margin-top: 8px; text-transform: uppercase; }
+footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spacing: 0.2em; text-transform: uppercase; text-align: center; position: relative; z-index: 1; }
+
+/* SYNC BAR */
+.sync-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--ink); color: var(--bg); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 10px 20px calc(10px + var(--safe-bottom)); display: flex; align-items: center; justify-content: space-between; }
+.sync-status { display: flex; align-items: center; gap: 8px; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
+.sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+.sync-dot.synced { background: #2e7d52; }
+.sync-dot.error { background: var(--accent); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+/* SETUP SCREEN */
+.setup-screen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; gap: 20px; }
+.setup-screen.hidden { display: none; }
+.setup-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; text-align: center; }
+.setup-title span { color: var(--accent); }
+.setup-sub { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.7; max-width: 320px; }
+.setup-inp { width: 100%; max-width: 400px; background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); outline: none; -webkit-appearance: none; }
+.setup-inp:focus { border-color: var(--gold); }
+.setup-btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 14px 32px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%; max-width: 400px; -webkit-tap-highlight-color: transparent; }
+.setup-steps { font-size: 11px; color: var(--muted); line-height: 2; max-width: 400px; width: 100%; }
+.setup-steps b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-title">Daily <span>Planner</span></div>
+  <div class="setup-sub">One-time setup to enable sync across all your devices via Dropbox.</div>
+  <div class="setup-steps">
+    <b>Step 1:</b> Go to dropbox.com/developers/apps<br>
+    <b>Step 2:</b> Create App → Scoped → Full Dropbox<br>
+    <b>Step 3:</b> Generate Access Token<br>
+    <b>Step 4:</b> Paste it below
+  </div>
+  <input class="setup-inp" id="tokenInput" placeholder="Paste your Dropbox access token…" />
+  <button class="setup-btn" onclick="saveToken()">Connect Dropbox & Start</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('morning')"><span class="tab-icon">☀️</span>Morning</div>
+  <div class="tab" onclick="switchTab('tasks')"><span class="tab-icon">✦</span>Tasks</div>
+  <div class="tab" onclick="switchTab('evening')"><span class="tab-icon">🌙</span>Evening</div>
+</div>
+
+<!-- MORNING -->
+<div class="section-page active" id="page-morning">
+  <div class="page-header">
+    <div class="date-str" id="d1"></div>
+    <div class="page-title">Good <span>Morning</span></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Morning Mindset</div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num">1</span><span class="q-prompt">One thing I can get excited about today is…</span></div><textarea class="q-inp" id="m1" placeholder="What are you looking forward to?"></textarea></div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num">5</span><span class="q-prompt">Someone I could surprise with a note, gift, or sign of appreciation is…</span></div><textarea class="q-inp" id="m5" placeholder="Who deserves a little extra today?"></textarea></div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num">6</span><span class="q-prompt">One action I could take today to demonstrate excellence or real value is…</span></div><textarea class="q-inp" id="m6" placeholder="What will make a difference?"></textarea></div>
+    <div class="mindset-q" style="margin-bottom:0"><div class="q-row"><span class="q-num">10</span><span class="q-prompt">The big picture I have to keep in mind today is that I am working steadily towards…</span></div><textarea class="q-inp" id="m10" placeholder="What is your ultimate goal?"></textarea></div>
+  </div>
+  <div class="section"><div class="quote-block"><div class="quote-text">"Beware of your inbox — it's nothing but a convenient organizing system for other people's agendas. Your goal is to always keep the main thing the main thing."</div><div class="quote-attr">— Brendon Burchard</div></div></div>
+</div>
+
+<!-- TASKS -->
+<div class="section-page" id="page-tasks">
+  <div class="page-header">
+    <div class="date-str" id="d3"></div>
+    <div class="page-title">Today's <span>Tasks</span></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Top 3 — Today</div>
+    <div class="top3-list" id="top3Container"></div>
+    <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="dailyProg"></div></div><div class="prog-lbl" id="dailyLbl"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Priorities — must be done today</div>
+    <div id="prioContainer"></div>
+    <div class="add-row"><div class="add-plus">+</div><input class="add-inp" id="prioInput" placeholder="Add a priority…" /></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Weekly priorities</div>
+    <div id="weeklyContainer"></div>
+    <div class="add-row"><div class="add-plus">+</div><input class="add-inp" id="weeklyInput" placeholder="Add a weekly task…" /></div>
+    <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="weeklyProg"></div></div><div class="prog-lbl" id="weeklyLbl"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-label">List</div>
+    <div id="listContainer"></div>
+    <div class="add-row"><div class="add-plus">+</div><input class="add-inp" id="listInput" placeholder="Add to the list…" /></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Projects — 3 projects, 5 next steps each</div>
+    <div class="projects-grid" id="projectsGrid"></div>
+  </div>
+</div>
+
+<!-- EVENING -->
+<div class="section-page" id="page-evening">
+  <div class="page-header">
+    <div class="date-str" id="d4"></div>
+    <div class="page-title">Evening <span>Journal</span></div>
+  </div>
+  <div class="section">
+    <div class="section-label">Evening Reflection</div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num eve-num">1</span><span class="q-prompt">A moment that I really appreciated today was…</span></div><textarea class="q-inp" id="e1" placeholder="What was today's highlight?"></textarea></div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num eve-num">3</span><span class="q-prompt">Something I realized or learned today was…</span></div><textarea class="q-inp" id="e3" placeholder="What did you take away?"></textarea></div>
+    <div class="mindset-q"><div class="q-row"><span class="q-num eve-num">4</span><span class="q-prompt">I could have made today even better if I…</span></div><textarea class="q-inp" id="e4" placeholder="What would you do differently?"></textarea></div>
+    <div class="mindset-q" style="margin-bottom:0"><div class="q-row"><span class="q-num eve-num">6</span><span class="q-prompt">If I was my own high performance coach, I would tell myself this about today…</span></div><textarea class="q-inp" id="e6" placeholder="What would your best self say?"></textarea></div>
+  </div>
+  <footer>— Focus creates progress —</footer>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Ready</span></div>
+  <span id="syncTime"></span>
+  <span onclick="resetToken()" style="cursor:pointer;opacity:0.5;font-size:9px;letter-spacing:0.1em;-webkit-tap-highlight-color:transparent;">↺ RECONNECT</span>
+</div>
+
+<script>
+// ── IndexedDB Storage (persistent on Safari, unlike localStorage) ──
+const DB_NAME = 'DailyPlannerDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'keyval';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, val) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbDelete(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ── State ──
+const DROPBOX_FILE = '/daily-planner-data.json';
+let TOKEN = '';
+let saveTimer = null;
+
+let state = {
+  daily: [{text:'',done:false},{text:'',done:false},{text:'',done:false}],
+  prio:[], weekly:[], list:[],
+  morning:{m1:'',m5:'',m6:'',m10:''},
+  evening:{e1:'',e3:'',e4:'',e6:''},
+  projects:[0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}))
+};
+
+// ── Setup ──
+async function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) return alert('Please paste your token first.');
+  TOKEN = t;
+  await idbSet('dbx_token', TOKEN);
+  // Also save to localStorage as backup
+  try { localStorage.setItem('dbx_token', TOKEN); } catch(e){}
+  document.getElementById('setupScreen').style.display='none';
+  init();
+}
+
+async function resetToken() {
+  await idbDelete('dbx_token');
+  try { localStorage.removeItem('dbx_token'); } catch(e){}
+  TOKEN='';
+  document.getElementById('setupScreen').style.display='flex';
+}
+
+async function loadToken() {
+  // Try IndexedDB first, then localStorage fallback
+  let t = await idbGet('dbx_token');
+  if (!t) {
+    try { t = localStorage.getItem('dbx_token'); } catch(e){}
+    // Migrate to IndexedDB if found in localStorage
+    if (t) await idbSet('dbx_token', t);
+  }
+  return t || '';
+}
+
+async function checkSetup() {
+  TOKEN = await loadToken();
+  if (!TOKEN) {
+    document.getElementById('setupScreen').style.display='flex';
+  } else {
+    document.getElementById('setupScreen').style.display='none';
+    init();
+  }
+}
+
+// ── Dropbox Sync ──
+function setSyncStatus(s, msg) {
+  document.getElementById('syncDot').className = 'sync-dot ' + s;
+  document.getElementById('syncLabel').textContent = msg;
+  if (s === 'synced') {
+    const now = new Date();
+    document.getElementById('syncTime').textContent = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }
+}
+
+async function loadFromDropbox() {
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE})
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      state = {...state, ...data};
+      while (state.daily.length < 3) state.daily.push({text:'',done:false});
+      state.projects = state.projects || [0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}));
+      state.projects.forEach(p => { while(p.steps.length<5) p.steps.push({text:'',done:false}); });
+      setSyncStatus('synced', 'Synced');
+    } else if (res.status === 401) {
+      setSyncStatus('error', 'Token expired — tap ↺');
+    } else if (res.status === 409) {
+      setSyncStatus('synced', 'Fresh start');
+    } else {
+      setSyncStatus('error', 'Sync error');
+    }
+  } catch(e) {
+    await loadLocal();
+    setSyncStatus('error', 'Offline — local data');
+  }
+  renderAll(); initTextareas();
+}
+
+async function saveToDropbox() {
+  await saveLocal();
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Dropbox-API-Arg': JSON.stringify({path: DROPBOX_FILE, mode: 'overwrite'}),
+        'Content-Type': 'application/octet-stream'
+      },
+      body: JSON.stringify(state)
+    });
+    if (res.ok) {
+      setSyncStatus('synced', 'Synced');
+    } else if (res.status === 401) {
+      setSyncStatus('error', 'Token expired — tap ↺');
+    } else {
+      setSyncStatus('error', 'Save failed');
+    }
+  } catch(e) {
+    setSyncStatus('error', 'Offline — saved locally');
+  }
+}
+
+function scheduleSave() { saveLocal(); clearTimeout(saveTimer); saveTimer = setTimeout(saveToDropbox, 1500); }
+
+async function saveLocal() {
+  try { await idbSet('planner_data', JSON.stringify(state)); } catch(e){}
+  try { localStorage.setItem('planner_local', JSON.stringify(state)); } catch(e){}
+}
+
+async function loadLocal() {
+  try {
+    let s = await idbGet('planner_data');
+    if (!s) { try { s = localStorage.getItem('planner_local'); } catch(e){} }
+    if (s) { const p = JSON.parse(s); state = {...state, ...p}; }
+  } catch(e){}
+}
+
+// ── Date ──
+function setDate() {
+  const d = new Date();
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const str=`${days[d.getDay()]} — ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  ['d1','d3','d4'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=str;});
+}
+
+// ── Tabs ──
+const TABS=['morning','tasks','evening'];
+function switchTab(name) {
+  document.querySelectorAll('.section-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.tab')[TABS.indexOf(name)].classList.add('active');
+}
+
+// ── Textareas ──
+function initTextareas() {
+  [{id:'m1',g:'morning'},{id:'m5',g:'morning'},{id:'m6',g:'morning'},{id:'m10',g:'morning'},
+   {id:'e1',g:'evening'},{id:'e3',g:'evening'},{id:'e4',g:'evening'},{id:'e6',g:'evening'}].forEach(({id,g})=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.value=state[g][id]||'';
+    el.oninput=()=>{state[g][id]=el.value;scheduleSave();el.style.height='auto';el.style.height=el.scrollHeight+'px';};
+    el.style.height='auto'; if(el.value) el.style.height=el.scrollHeight+'px';
+  });
+}
+
+// ── Render ──
+function renderAll(){renderProjects();renderTop3();renderPrio();renderWeekly();renderList();}
+
+function renderProjects(){
+  const grid=document.getElementById('projectsGrid');grid.innerHTML='';
+  state.projects.forEach((proj,pi)=>{
+    const card=document.createElement('div');card.className='project-card';
+    const ni=document.createElement('input');ni.className='project-name-inp';ni.placeholder=`Project ${pi+1}…`;ni.value=proj.name;
+    ni.oninput=e=>{state.projects[pi].name=e.target.value;scheduleSave();};
+    card.appendChild(ni);
+    const se=document.createElement('div');se.className='project-steps';
+    proj.steps.forEach((step,si)=>{
+      const row=document.createElement('div');row.className='step-row';
+      const num=document.createElement('div');num.className='step-num';num.textContent=si+1;
+      const inp=document.createElement('input');inp.className='step-inp'+(step.done?' done-text':'');inp.placeholder='Next step…';inp.value=step.text;
+      inp.oninput=e=>{state.projects[pi].steps[si].text=e.target.value;scheduleSave();};
+      const chk=document.createElement('div');chk.className='step-check'+(step.done?' checked':'');
+      chk.onclick=()=>{state.projects[pi].steps[si].done=!state.projects[pi].steps[si].done;scheduleSave();renderProjects();};
+      row.appendChild(num);row.appendChild(inp);row.appendChild(chk);se.appendChild(row);
+    });
+    card.appendChild(se);grid.appendChild(card);
+  });
+}
+
+function renderTop3(){
+  const c=document.getElementById('top3Container');c.innerHTML='';
+  state.daily.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='top3-item'+(item.done?' done':'');
+    const rank=document.createElement('div');rank.className='rank-num';rank.textContent=i+1;rank.onclick=()=>toggleDaily(i);
+    const inp=document.createElement('input');inp.className='t3-inp';inp.value=item.text;
+    inp.placeholder=['Most important task today…','Second priority…','Third priority…'][i];
+    inp.oninput=e=>{state.daily[i].text=e.target.value;scheduleSave();};
+    const btn=document.createElement('button');btn.className='circle-btn';
+    btn.innerHTML=`<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    btn.onclick=()=>toggleDaily(i);
+    row.appendChild(rank);row.appendChild(inp);row.appendChild(btn);c.appendChild(row);
+  });
+  const done=state.daily.filter(x=>x.done&&x.text).length;
+  const total=state.daily.filter(x=>x.text).length||3;
+  document.getElementById('dailyProg').style.width=Math.round(done/total*100)+'%';
+  document.getElementById('dailyLbl').textContent=done+' of '+total+' completed';
+}
+function toggleDaily(i){state.daily[i].done=!state.daily[i].done;scheduleSave();renderTop3();}
+
+function renderPrio(){
+  const c=document.getElementById('prioContainer');c.innerHTML='';
+  state.prio.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='prio-item'+(item.done?' done':'');
+    const dash=document.createElement('div');dash.className='prio-dash';dash.textContent=item.done?'✓':'—';
+    dash.onclick=()=>{state.prio[i].done=!state.prio[i].done;scheduleSave();renderPrio();};
+    const inp=document.createElement('input');inp.className='prio-inp';inp.value=item.text;
+    inp.oninput=e=>{state.prio[i].text=e.target.value;scheduleSave();};
+    const del=document.createElement('button');del.className='del-btn';del.textContent='×';
+    del.onclick=()=>{state.prio.splice(i,1);scheduleSave();renderPrio();};
+    row.appendChild(dash);row.appendChild(inp);row.appendChild(del);c.appendChild(row);
+  });
+}
+document.getElementById('prioInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){state.prio.push({text:e.target.value.trim(),done:false});e.target.value='';scheduleSave();renderPrio();}});
+
+function renderWeekly(){
+  const c=document.getElementById('weeklyContainer');c.innerHTML='';
+  state.weekly.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='w-item'+(item.done?' done':'');
+    const dot=document.createElement('div');dot.className='w-dot';dot.onclick=()=>{state.weekly[i].done=!state.weekly[i].done;scheduleSave();renderWeekly();};
+    const inp=document.createElement('input');inp.className='w-inp';inp.value=item.text;
+    inp.oninput=e=>{state.weekly[i].text=e.target.value;scheduleSave();};
+    const del=document.createElement('button');del.className='del-btn';del.textContent='×';
+    del.onclick=()=>{state.weekly.splice(i,1);scheduleSave();renderWeekly();};
+    row.appendChild(dot);row.appendChild(inp);row.appendChild(del);c.appendChild(row);
+  });
+  const done=state.weekly.filter(x=>x.done).length,total=state.weekly.length;
+  document.getElementById('weeklyProg').style.width=total?Math.round(done/total*100)+'%':'0%';
+  document.getElementById('weeklyLbl').textContent=total?done+' of '+total+' completed':'No weekly tasks yet';
+}
+document.getElementById('weeklyInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){state.weekly.push({text:e.target.value.trim(),done:false});e.target.value='';scheduleSave();renderWeekly();}});
+
+function renderList(){
+  const c=document.getElementById('listContainer');c.innerHTML='';
+  state.list.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='l-item'+(item.done?' done':'');
+    const dash=document.createElement('div');dash.className='l-dash';dash.textContent=item.done?'✓':'—';
+    dash.onclick=()=>{state.list[i].done=!state.list[i].done;scheduleSave();renderList();};
+    const inp=document.createElement('input');inp.className='l-inp';inp.value=item.text;
+    inp.oninput=e=>{state.list[i].text=e.target.value;scheduleSave();};
+    const del=document.createElement('button');del.className='del-btn';del.textContent='×';
+    del.onclick=()=>{state.list.splice(i,1);scheduleSave();renderList();};
+    row.appendChild(dash);row.appendChild(inp);row.appendChild(del);c.appendChild(row);
+  });
+}
+document.getElementById('listInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){state.list.push({text:e.target.value.trim(),done:false});e.target.value='';scheduleSave();renderList();}});
+
+// ── Init ──
+function init(){setDate();loadFromDropbox();}
+
+// Register service worker for PWA caching
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+checkSetup();
+</script>
+</body>
+</html>
