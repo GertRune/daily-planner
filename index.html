@@ -2,31 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Planner</title>
-
-<!-- PWA & iOS Web App -->
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Daily Planner">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#c84b2f">
-
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --bg: #f5f0e8; --paper: #faf7f2; --border: #d4cbb8; --border-light: #e8e0d0;
   --ink: #1a1a18; --muted: #8a8070; --accent: #c84b2f; --gold: #b89a4e; --blue: #4a7a9b;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-body { background: var(--bg); color: var(--ink); font-family: 'DM Mono', monospace; min-height: 100vh; padding: var(--safe-top) 0 calc(60px + var(--safe-bottom)); -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: 'DM Mono', monospace; min-height: 100vh; padding: 0 0 60px; }
 body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 31px, var(--border-light) 31px, var(--border-light) 32px); opacity: 0.4; pointer-events: none; z-index: 0; }
-.tabs { position: sticky; top: var(--safe-top); z-index: 100; background: var(--bg); border-bottom: 2px solid var(--ink); display: flex; overflow-x: auto; scrollbar-width: none; }
+.tabs { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 2px solid var(--ink); display: flex; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { flex: 1; min-width: 70px; padding: 14px 6px 10px; text-align: center; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; user-select: none; -webkit-tap-highlight-color: transparent; }
+.tab { flex: 1; min-width: 70px; padding: 14px 6px 10px; text-align: center; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; user-select: none; }
 .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
 .tab-icon { font-size: 14px; display: block; margin-bottom: 3px; }
 .section-page { display: none; animation: fadeUp 0.3s ease both; position: relative; z-index: 1; }
@@ -43,7 +38,7 @@ body::before { content: ''; position: fixed; inset: 0; background: repeating-lin
 .q-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 6px; }
 .q-num { font-family: 'Playfair Display', serif; font-size: 24px; font-style: italic; color: var(--border); line-height: 1.1; min-width: 22px; }
 .q-prompt { font-size: 11px; color: var(--muted); line-height: 1.5; padding-top: 4px; }
-.q-inp { width: 100%; background: var(--paper); border: 1px solid var(--border); border-radius: 3px; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 300; padding: 10px 12px; resize: none; min-height: 56px; outline: none; transition: border-color 0.2s; caret-color: var(--accent); -webkit-appearance: none; }
+.q-inp { width: 100%; background: var(--paper); border: 1px solid var(--border); border-radius: 3px; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 300; padding: 10px 12px; resize: none; min-height: 56px; outline: none; transition: border-color 0.2s; caret-color: var(--accent); }
 .q-inp:focus { border-color: var(--gold); }
 .q-inp::placeholder { color: var(--border); font-style: italic; }
 .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
@@ -56,38 +51,36 @@ body::before { content: ''; position: fixed; inset: 0; background: repeating-lin
 .step-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 300; width: 100%; caret-color: var(--accent); }
 .step-inp::placeholder { color: var(--border-light); }
 .step-inp.done-text { text-decoration: line-through; opacity: 0.4; }
-.step-check { width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 2px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.step-check { width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 2px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
 .step-check.checked { background: var(--accent); border-color: var(--accent); }
 .step-check.checked::after { content: '✓'; color: white; font-size: 9px; }
 .top3-list { display: flex; flex-direction: column; }
 .top3-item { display: grid; grid-template-columns: 44px 1fr 28px; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--border); }
 .top3-item:first-child { border-top: 1px solid var(--border); }
-.rank-num { font-family: 'Playfair Display', serif; font-size: 32px; font-style: italic; color: var(--border); line-height: 1; transition: color 0.2s; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.rank-num { font-family: 'Playfair Display', serif; font-size: 32px; font-style: italic; color: var(--border); line-height: 1; transition: color 0.2s; cursor: pointer; user-select: none; }
 .top3-item.done .rank-num { color: var(--accent); }
 .t3-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 300; width: 100%; caret-color: var(--accent); }
 .t3-inp::placeholder { color: var(--border); }
 .top3-item.done .t3-inp { text-decoration: line-through; opacity: 0.38; }
-.circle-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.circle-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
 .circle-btn svg { opacity: 0; transition: opacity 0.15s; }
 .top3-item.done .circle-btn { background: var(--accent); border-color: var(--accent); }
 .top3-item.done .circle-btn svg { opacity: 1; }
 .prio-item, .w-item, .l-item { display: grid; grid-template-columns: 20px 1fr 20px; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
 .prio-item:first-child, .w-item:first-child, .l-item:first-child { border-top: 1px dashed var(--border); }
-.prio-dash, .l-dash { color: var(--muted); font-size: 12px; text-align: center; cursor: pointer; user-select: none; transition: color 0.15s; -webkit-tap-highlight-color: transparent; }
+.prio-dash, .l-dash { color: var(--muted); font-size: 12px; text-align: center; cursor: pointer; user-select: none; transition: color 0.15s; }
 .prio-item.done .prio-dash, .l-item.done .l-dash { color: var(--accent); }
 .prio-inp, .w-inp, .l-inp { background: transparent; border: none; outline: none; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 300; width: 100%; caret-color: var(--accent); }
 .prio-item.done .prio-inp, .w-item.done .w-inp, .l-item.done .l-inp { text-decoration: line-through; opacity: 0.38; }
-.w-dot { width: 8px; height: 8px; border: 1.5px solid var(--gold); border-radius: 50%; margin: auto; transition: all 0.2s; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.w-dot { width: 8px; height: 8px; border: 1.5px solid var(--gold); border-radius: 50%; margin: auto; transition: all 0.2s; cursor: pointer; flex-shrink: 0; }
 .w-item.done .w-dot { background: var(--gold); }
 .add-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .add-plus { color: var(--border); font-size: 16px; width: 20px; text-align: center; }
 .add-inp { background: transparent; border: none; border-bottom: 1px solid transparent; outline: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 300; width: 100%; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; caret-color: var(--accent); }
 .add-inp:focus { border-bottom-color: var(--gold); color: var(--ink); }
 .add-inp::placeholder { color: var(--border); }
-.del-btn { background: none; border: none; color: var(--border); cursor: pointer; font-size: 14px; line-height: 1; padding: 4px; transition: color 0.15s; -webkit-tap-highlight-color: transparent; }
-.del-btn:active { color: var(--accent); }
-@media (hover: hover) { .del-btn { opacity: 0; } .w-item:hover .del-btn, .l-item:hover .del-btn, .prio-item:hover .del-btn { opacity: 1; } }
-@media (hover: none) { .del-btn { opacity: 0.4; } }
+.del-btn { background: none; border: none; color: var(--border); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; transition: color 0.15s; opacity: 0; }
+.w-item:hover .del-btn, .l-item:hover .del-btn, .prio-item:hover .del-btn { opacity: 1; }
 .del-btn:hover { color: var(--accent); }
 .prog-wrap { margin-top: 12px; }
 .prog-bar { height: 1px; background: var(--border); }
@@ -100,7 +93,7 @@ body::before { content: ''; position: fixed; inset: 0; background: repeating-lin
 footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spacing: 0.2em; text-transform: uppercase; text-align: center; position: relative; z-index: 1; }
 
 /* SYNC BAR */
-.sync-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--ink); color: var(--bg); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 10px 20px calc(10px + var(--safe-bottom)); display: flex; align-items: center; justify-content: space-between; }
+.sync-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--ink); color: var(--bg); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
 .sync-status { display: flex; align-items: center; gap: 8px; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
 .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
@@ -114,9 +107,9 @@ footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spa
 .setup-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; text-align: center; }
 .setup-title span { color: var(--accent); }
 .setup-sub { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.7; max-width: 320px; }
-.setup-inp { width: 100%; max-width: 400px; background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); outline: none; -webkit-appearance: none; }
+.setup-inp { width: 100%; max-width: 400px; background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); outline: none; }
 .setup-inp:focus { border-color: var(--gold); }
-.setup-btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 14px 32px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%; max-width: 400px; -webkit-tap-highlight-color: transparent; }
+.setup-btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 14px 32px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%; max-width: 400px; }
 .setup-steps { font-size: 11px; color: var(--muted); line-height: 2; max-width: 400px; width: 100%; }
 .setup-steps b { color: var(--ink); }
 </style>
@@ -211,57 +204,20 @@ footer { padding: 36px 24px 0; font-size: 10px; color: var(--border); letter-spa
 <div class="sync-bar">
   <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Ready</span></div>
   <span id="syncTime"></span>
-  <span onclick="resetToken()" style="cursor:pointer;opacity:0.5;font-size:9px;letter-spacing:0.1em;-webkit-tap-highlight-color:transparent;">↺ RECONNECT</span>
+  <span onclick="resetToken()" style="cursor:pointer;opacity:0.5;font-size:9px;letter-spacing:0.1em;">↺ RECONNECT</span>
 </div>
 
 <script>
-// ── IndexedDB Storage (persistent on Safari, unlike localStorage) ──
-const DB_NAME = 'DailyPlannerDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'keyval';
+// IndexedDB for persistent storage (Safari won't purge like localStorage)
+const DB_NAME='DailyPlannerDB',DB_VERSION=1,STORE_NAME='keyval';
+function openDB(){return new Promise((r,j)=>{const q=indexedDB.open(DB_NAME,DB_VERSION);q.onupgradeneeded=()=>q.result.createObjectStore(STORE_NAME);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);})}
+async function idbGet(k){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readonly');const q=t.objectStore(STORE_NAME).get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);})}
+async function idbSet(k,v){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readwrite');t.objectStore(STORE_NAME).put(v,k);t.oncomplete=()=>r();t.onerror=()=>j(t.error);})}
+async function idbDelete(k){const d=await openDB();return new Promise((r,j)=>{const t=d.transaction(STORE_NAME,'readwrite');t.objectStore(STORE_NAME).delete(k);t.oncomplete=()=>r();t.onerror=()=>j(t.error);})}
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbGet(key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbSet(key, val) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(val, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function idbDelete(key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-// ── State ──
 const DROPBOX_FILE = '/daily-planner-data.json';
 let TOKEN = '';
+async function resetToken() { await idbDelete('dbx_token'); try{localStorage.removeItem('dbx_token');}catch(e){} TOKEN=''; document.getElementById('setupScreen').style.display='flex'; }
 let saveTimer = null;
 
 let state = {
@@ -272,38 +228,21 @@ let state = {
   projects:[0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}))
 };
 
-// ── Setup ──
+// SETUP
 async function saveToken() {
   const t = document.getElementById('tokenInput').value.trim();
   if (!t) return alert('Please paste your token first.');
   TOKEN = t;
   await idbSet('dbx_token', TOKEN);
-  // Also save to localStorage as backup
-  try { localStorage.setItem('dbx_token', TOKEN); } catch(e){}
+  try{localStorage.setItem('dbx_token', TOKEN);}catch(e){}
   document.getElementById('setupScreen').style.display='none';
   init();
 }
 
-async function resetToken() {
-  await idbDelete('dbx_token');
-  try { localStorage.removeItem('dbx_token'); } catch(e){}
-  TOKEN='';
-  document.getElementById('setupScreen').style.display='flex';
-}
-
-async function loadToken() {
-  // Try IndexedDB first, then localStorage fallback
-  let t = await idbGet('dbx_token');
-  if (!t) {
-    try { t = localStorage.getItem('dbx_token'); } catch(e){}
-    // Migrate to IndexedDB if found in localStorage
-    if (t) await idbSet('dbx_token', t);
-  }
-  return t || '';
-}
-
 async function checkSetup() {
-  TOKEN = await loadToken();
+  // Try IndexedDB first, then localStorage fallback
+  TOKEN = await idbGet('dbx_token') || '';
+  if (!TOKEN) { try{TOKEN=localStorage.getItem('dbx_token')||'';}catch(e){} if(TOKEN) await idbSet('dbx_token',TOKEN); }
   if (!TOKEN) {
     document.getElementById('setupScreen').style.display='flex';
   } else {
@@ -312,7 +251,7 @@ async function checkSetup() {
   }
 }
 
-// ── Dropbox Sync ──
+// DROPBOX
 function setSyncStatus(s, msg) {
   document.getElementById('syncDot').className = 'sync-dot ' + s;
   document.getElementById('syncLabel').textContent = msg;
@@ -339,25 +278,21 @@ async function loadFromDropbox() {
       state.projects = state.projects || [0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}));
       state.projects.forEach(p => { while(p.steps.length<5) p.steps.push({text:'',done:false}); });
       setSyncStatus('synced', 'Synced');
-    } else if (res.status === 401) {
-      setSyncStatus('error', 'Token expired — tap ↺');
-    } else if (res.status === 409) {
-      setSyncStatus('synced', 'Fresh start');
     } else {
-      setSyncStatus('error', 'Sync error');
+      setSyncStatus('synced', 'Fresh start');
     }
   } catch(e) {
-    await loadLocal();
-    setSyncStatus('error', 'Offline — local data');
+    loadLocal();
+    setSyncStatus('error', 'Offline — saved locally');
   }
   renderAll(); initTextareas();
 }
 
 async function saveToDropbox() {
-  await saveLocal();
+  saveLocal();
   setSyncStatus('syncing', 'Saving…');
   try {
-    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+    await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + TOKEN,
@@ -366,34 +301,16 @@ async function saveToDropbox() {
       },
       body: JSON.stringify(state)
     });
-    if (res.ok) {
-      setSyncStatus('synced', 'Synced');
-    } else if (res.status === 401) {
-      setSyncStatus('error', 'Token expired — tap ↺');
-    } else {
-      setSyncStatus('error', 'Save failed');
-    }
+    setSyncStatus('synced', 'Synced');
   } catch(e) {
     setSyncStatus('error', 'Offline — saved locally');
   }
 }
 
 function scheduleSave() { saveLocal(); clearTimeout(saveTimer); saveTimer = setTimeout(saveToDropbox, 1500); }
+async function saveLocal() { try{await idbSet('planner_data',JSON.stringify(state));}catch(e){} try{localStorage.setItem('planner_local',JSON.stringify(state));}catch(e){} }
+async function loadLocal() { try{let s=await idbGet('planner_data');if(!s)try{s=localStorage.getItem('planner_local');}catch(e){}if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){} }
 
-async function saveLocal() {
-  try { await idbSet('planner_data', JSON.stringify(state)); } catch(e){}
-  try { localStorage.setItem('planner_local', JSON.stringify(state)); } catch(e){}
-}
-
-async function loadLocal() {
-  try {
-    let s = await idbGet('planner_data');
-    if (!s) { try { s = localStorage.getItem('planner_local'); } catch(e){} }
-    if (s) { const p = JSON.parse(s); state = {...state, ...p}; }
-  } catch(e){}
-}
-
-// ── Date ──
 function setDate() {
   const d = new Date();
   const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -402,7 +319,6 @@ function setDate() {
   ['d1','d3','d4'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=str;});
 }
 
-// ── Tabs ──
 const TABS=['morning','tasks','evening'];
 function switchTab(name) {
   document.querySelectorAll('.section-page').forEach(p=>p.classList.remove('active'));
@@ -411,7 +327,6 @@ function switchTab(name) {
   document.querySelectorAll('.tab')[TABS.indexOf(name)].classList.add('active');
 }
 
-// ── Textareas ──
 function initTextareas() {
   [{id:'m1',g:'morning'},{id:'m5',g:'morning'},{id:'m6',g:'morning'},{id:'m10',g:'morning'},
    {id:'e1',g:'evening'},{id:'e3',g:'evening'},{id:'e4',g:'evening'},{id:'e6',g:'evening'}].forEach(({id,g})=>{
@@ -422,7 +337,6 @@ function initTextareas() {
   });
 }
 
-// ── Render ──
 function renderAll(){renderProjects();renderTop3();renderPrio();renderWeekly();renderList();}
 
 function renderProjects(){
@@ -513,14 +427,8 @@ function renderList(){
 }
 document.getElementById('listInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){state.list.push({text:e.target.value.trim(),done:false});e.target.value='';scheduleSave();renderList();}});
 
-// ── Init ──
 function init(){setDate();loadFromDropbox();}
-
-// Register service worker for PWA caching
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
-}
-
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 checkSetup();
 </script>
 </body>
