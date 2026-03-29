@@ -217,7 +217,7 @@ if ('serviceWorker' in navigator) {
 
 // ── SYNC via jsonblob.com — no tokens, no expiry, no accounts ──
 const API = 'https://jsonblob.com/api/jsonBlob';
-let BLOB_ID = localStorage.getItem('planner_blob_id') || '';
+const BLOB_ID = '019d3957-9ba4-768b-ab77-2fce2ac0647d';
 let saveTimer = null;
 
 let state = {
@@ -228,59 +228,9 @@ let state = {
   projects:[0,1,2].map(()=>({name:'',steps:Array(5).fill(null).map(()=>({text:'',done:false}))}))
 };
 
-// ── Setup ──
-async function createNew() {
-  setSyncStatus('syncing', 'Creating…');
-  try {
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(state)
-    });
-    if (res.ok) {
-      BLOB_ID = res.headers.get('X-Jsonblob-Id') || '';
-      if (!BLOB_ID) {
-        const loc = res.headers.get('Location') || '';
-        BLOB_ID = loc.split('/').pop();
-      }
-      localStorage.setItem('planner_blob_id', BLOB_ID);
-      document.getElementById('setupScreen').style.display = 'none';
-      // Show the sync code so user can copy it
-      alert('Your sync code: ' + BLOB_ID + '\n\nSave this! Enter it on your other devices to sync.');
-      setSyncStatus('synced', 'Created');
-      init();
-    } else {
-      setSyncStatus('error', 'Failed to create — try again');
-    }
-  } catch(e) {
-    setSyncStatus('error', e.message);
-  }
-}
-
-function connectWithCode() {
-  const code = document.getElementById('codeInput').value.trim();
-  if (!code) return alert('Enter your sync code first.');
-  BLOB_ID = code;
-  localStorage.setItem('planner_blob_id', BLOB_ID);
+function checkSetup() {
   document.getElementById('setupScreen').style.display = 'none';
   init();
-}
-
-function showCode() {
-  if (BLOB_ID) {
-    prompt('Your sync code (copy it for other devices):', BLOB_ID);
-  } else {
-    alert('No sync code yet — set up first.');
-  }
-}
-
-function checkSetup() {
-  if (!BLOB_ID) {
-    document.getElementById('setupScreen').style.display = 'flex';
-  } else {
-    document.getElementById('setupScreen').style.display = 'none';
-    init();
-  }
 }
 
 // ── Sync ──
