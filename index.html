@@ -264,6 +264,22 @@ function setSyncStatus(s, msg) {
 async function loadFromDropbox() {
   setSyncStatus('syncing', 'Loading…');
   try {
+    // First check if file exists via metadata
+    const metaRes = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({path: DROPBOX_FILE})
+    });
+    if (!metaRes.ok) {
+      // File doesn't exist yet — fresh start, no error
+      setSyncStatus('synced', 'Ready — fresh start');
+      renderAll(); initTextareas();
+      return;
+    }
+    // File exists, download it
     const res = await fetch('https://content.dropboxapi.com/2/files/download', {
       method: 'POST',
       headers: {
