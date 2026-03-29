@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daily-planner-v1';
+const CACHE_NAME = 'daily-planner-v3';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -16,6 +16,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Network first, cache fallback — always get fresh content
   e.respondWith(
     fetch(e.request)
       .then(res => {
